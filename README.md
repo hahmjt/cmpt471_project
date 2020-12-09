@@ -8,7 +8,7 @@
 
 [hahmjt/cmpt471_project](https://github.com/hahmjt/cmpt471_project)
 
-- The project is made with Intelij, and Gradle's multi module project
+- The project is made with Intelij, and Gradle multi module project
 - JDK8 is required
 - To execute the server please run this in root folder of the project
 
@@ -24,7 +24,7 @@
 
 - Transferred data should be printed in the terminal
 - Spring Framework was used to ease development process
-- Netty was used to TCP transport only, and it did not impact my implementation of the WebSocket Server and Client
+- Netty was used for TCP transport only, and it did not impact my implementation of the WebSocket Server and Client
 
 ## TL;DR
 
@@ -36,9 +36,17 @@
 
 - Each server generates random data to simulate data generation. UDP broadcast was used to sync data across three servers.
 - Regardless of server the clients connect to, it will share the same data.
+    - I was hoping to create a procotol for the servers to share data quickly and reliably, but wasn't able to do so. I was able to achieve sync with UDP broadcasting.
 - WebSocket Server Implementation supports masking, and multi frame transport
-- WebSocket Server can be tested with traditional client such as [https://www.websocket.org/echo.html](https://www.websocket.org/echo.html)
-- WebSocket Client was tested with ws://echo.websocket.org
+- Nginx configuration for load balancing three WebSocket server is in the nginx folder
+
+## Test Cases
+
+- Connecting to ws://[localhost:9999](http://localhost:9999)/ via [https://www.websocket.org/echo.html](https://www.websocket.org/echo.html) and sending any text will return the connected hostname
+- Connecting to ws://[localhost:9999](http://localhost:9999)/data via [https://www.websocket.org/echo.html](https://www.websocket.org/echo.html) and sending any text will return the data the server holds, which should be same across three servers
+    - Each data will be transferred as separate frame
+- Using my Implementation of client will send "Hello Server" after initial handshake
+    - WebSocket Client was tested with ws://echo.websocket.org
 
 ## Known Issues
 

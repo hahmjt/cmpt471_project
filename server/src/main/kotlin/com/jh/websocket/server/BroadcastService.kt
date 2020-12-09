@@ -25,7 +25,6 @@ class BroadcastService(private val broadcastComponent: BroadcastComponent) {
 
         //Broadcast to let other servers know and add it to their datastore
         broadcast(uuid, InetAddress.getByName("255.255.255.255"))
-        DataStore.set.add(uuid)
     }
 
 

@@ -49,7 +49,8 @@ class WebSocketClientHandler : ChannelInboundHandlerAdapter() {
         if (!isConnected) {
             initiateWebSocketHandShake(ctx, received)
 
-            ctx.writeAndFlush(getRequestFrame("Hello Echo"))
+            ctx.writeAndFlush(getRequestFrame("Hello Server"))
+            return
         }
 
         processHeader(inBuffer)
@@ -76,7 +77,7 @@ class WebSocketClientHandler : ChannelInboundHandlerAdapter() {
         val rawHttp = RawHttp()
         val httpResponse = rawHttp.parseResponse(received)
 
-        if (httpResponse.headers.get("Connection").contains("Upgrade") && httpResponse.headers.get("Upgrade").contains("websocket")) {
+        if (httpResponse.headers.get("Connection").first().toLowerCase() == "upgrade" && httpResponse.headers.get("Upgrade").contains("websocket")) {
             if (httpResponse.headers.get("Sec-WebSocket-Accept").first() == Base64.getEncoder().encodeToString(MessageDigest.getInstance("SHA-1").digest((Base64.getEncoder().encodeToString("CMPT471".toByteArray()) + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11").toByteArray()))) {
                 isConnected = true
             }

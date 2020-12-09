@@ -1,10 +1,48 @@
 version: '3.8'
 
 services:
-  websocket-server1:
+  websocket-server-1:
+    container_name: websocket-server-1
     image: centos:7
-    command: bash -c 'yum install -y git java-1.8.0-openjdk java-1.8.0-openjdk-devel && git clone https://github.com/hahmjt/cmpt471_project.git ~/project && export JAVA_HOME=/usr/lib/jvm/java && ~/project/gradlew :server:bootRun'
-    deploy:
-      resources:
-        limits:
-          memory: 1024M
+    command: bash -c 'yum install -y git java-1.8.0-openjdk java-1.8.0-openjdk-devel && rm -rf ~/project && git clone https://github.com/hahmjt/cmpt471_project.git ~/project && export JAVA_HOME=/usr/lib/jvm/java && cd ~/project && ./gradlew :server:bootRun'
+    expose:
+      - 9999
+    networks:
+      internal:
+        ipv4_address: 10.5.0.6
+  websocket-server-2:
+    container_name: websocket-server-2
+    image: centos:7
+    command: bash -c 'yum install -y git java-1.8.0-openjdk java-1.8.0-openjdk-devel && rm -rf ~/project && git clone https://github.com/hahmjt/cmpt471_project.git ~/project && export JAVA_HOME=/usr/lib/jvm/java && cd ~/project && ./gradlew :server:bootRun'
+    expose:
+      - 9999
+    networks:
+      internal:
+        ipv4_address: 10.5.0.7
+  websocket-server-3:
+    container_name: websocket-server-3
+    image: centos:7
+    command: bash -c 'yum install -y git java-1.8.0-openjdk java-1.8.0-openjdk-devel && rm -rf ~/project && git clone https://github.com/hahmjt/cmpt471_project.git ~/project && export JAVA_HOME=/usr/lib/jvm/java && cd ~/project && ./gradlew :server:bootRun'
+    expose:
+      - 9999
+    networks:
+      internal:
+        ipv4_address: 10.5.0.8
+  nginx:
+    container_name: nginx
+    image: nginx
+    ports:
+      - "9999:9999"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+    networks:
+      internal:
+        ipv4_address: 10.5.0.2
+
+networks:
+  internal:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.5.0.0/16
+          gateway: 10.5.0.1

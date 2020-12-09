@@ -19,7 +19,7 @@ class BroadcastService(private val broadcastComponent: BroadcastComponent) {
         broadcastComponent.listen()
     }
 
-    @Scheduled(fixedRate = 30000L)
+    @Scheduled(initialDelay = 60000L, fixedRate = 30000L)
     fun generateData(){
         val uuid = UUID.randomUUID().toString()
 

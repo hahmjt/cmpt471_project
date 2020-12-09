@@ -10,6 +10,7 @@ import io.netty.channel.socket.nio.NioServerSocketChannel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
+import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.util.concurrent.TimeUnit
 import javax.annotation.PostConstruct
@@ -31,7 +32,7 @@ class TcpServerComponent {
             val serverBootstrap = ServerBootstrap()
             serverBootstrap.group(group)
             serverBootstrap.channel(NioServerSocketChannel::class.java)
-            serverBootstrap.localAddress(InetSocketAddress("localhost", 9999))
+            serverBootstrap.localAddress(InetSocketAddress(InetAddress.getLocalHost(), 9999))
             serverBootstrap.childHandler(object : ChannelInitializer<SocketChannel>() {
                 @Throws(Exception::class)
                 override fun initChannel(socketChannel: SocketChannel) {

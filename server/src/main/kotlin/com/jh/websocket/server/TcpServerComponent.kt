@@ -46,6 +46,7 @@ class TcpServerComponent {
 
     @PreDestroy
     fun preDestroy() {
+
         log.debug("End TCP Server")
 
         group.shutdownGracefully(1, 10, TimeUnit.SECONDS).sync()

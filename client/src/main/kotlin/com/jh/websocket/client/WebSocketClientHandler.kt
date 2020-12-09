@@ -1,25 +1,45 @@
-import com.jh.websocket.server.DataStore
+package com.jh.websocket.client
+
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
 import io.netty.util.CharsetUtil
-import org.springframework.context.ApplicationContext
-import rawhttp.core.RawHttp
+import rawhttp.core.*
 import java.net.InetAddress
+import java.net.URI
 import java.nio.charset.Charset
 import java.security.MessageDigest
 import java.util.*
 import kotlin.experimental.xor
 
-
-class WebSocketServerHandler : ChannelInboundHandlerAdapter() {
+class WebSocketClientHandler : ChannelInboundHandlerAdapter() {
 
     private var isConnected: Boolean = false
-    private var isDataConnection = false
+
     private var remainingFrameSize = 0
-    private var currentFrameKey: ShortArray = shortArrayOf()
-    private var currentFrameKeyIndex: Int = 0
+
+
+    override fun channelActive(ctx: ChannelHandlerContext?) {
+        val requestLine = RequestLine("GET", URI("ws://localhost:9999"), HttpVersion.HTTP_1_1)
+
+        val headers = RawHttpHeaders.newBuilder()
+                .with("Host", "localhost:9999")
+                .with("Cache-Control", "no-cache")
+                .with("Pragma", "no-cache")
+                .with("Accept-Language", "en-US,en;q=0.9")
+                .with("Connection", "Upgrade")
+                .with("Upgrade", "websocket")
+                .with("Sec-WebSocket-Key", Base64.getEncoder().encodeToString("CMPT471".toByteArray()))
+                .with("User-Agent", "netty")
+                .with("Origin", "http://www.websocket.org")
+                .with("Sec-WebSocket-Version", "13")
+                .build()
+
+        val rawHttpRequest = RawHttpRequest(requestLine, headers, null, InetAddress.getLocalHost())
+
+        ctx?.writeAndFlush(Unpooled.copiedBuffer(rawHttpRequest.toString().toByteArray()))
+    }
 
     @Throws(Exception::class)
     override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
@@ -28,18 +48,15 @@ class WebSocketServerHandler : ChannelInboundHandlerAdapter() {
 
         if (!isConnected) {
             initiateWebSocketHandShake(ctx, received)
-            return
+
+            ctx.writeAndFlush(getRequestFrame("Hello Echo"))
         }
 
-        if (remainingFrameSize == 0) {
-            processHeader(inBuffer)
-        }
-
+        processHeader(inBuffer)
 
         while (inBuffer.isReadable) {
-            val decoded = inBuffer.readByte() xor currentFrameKey[currentFrameKeyIndex and 0x3].toByte()
+            val decoded = inBuffer.readByte()
             print(decoded.toChar())
-            currentFrameKeyIndex++
             remainingFrameSize--
 
             if(inBuffer.isReadable && remainingFrameSize == 0){
@@ -50,51 +67,26 @@ class WebSocketServerHandler : ChannelInboundHandlerAdapter() {
         inBuffer.discardReadBytes()
     }
 
-    @Throws(Exception::class)
-    override fun channelReadComplete(ctx: ChannelHandlerContext) {
-        if(isConnected){
-            if(isDataConnection){
-                DataStore.set.forEach {
-                    ctx.write(getResponseFrame(it))
-                }
-            }else{
-                ctx.write(getResponseFrame("Hi This is "+InetAddress.getLocalHost().hostName))
-            }
-        }
-        ctx.flush()
-        this.isConnected = true
-    }
 
-    @Throws(Exception::class)
-    override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
-        cause.printStackTrace()
-        ctx.close()
+    override fun channelReadComplete(ctx: ChannelHandlerContext?) {
+        ctx?.flush()
     }
-
 
     private fun initiateWebSocketHandShake(ctx: ChannelHandlerContext, received: String) {
         val rawHttp = RawHttp()
-        val httpRequest = rawHttp.parseRequest(received)
+        val httpResponse = rawHttp.parseResponse(received)
 
-        isDataConnection = httpRequest.startLine.uri.path.contains("data",true)
-
-        if (httpRequest.headers.get("Connection").contains("Upgrade") && httpRequest.headers.get("Upgrade").contains("websocket")) {
-
-            val response = ("HTTP/1.1 101 Switching Protocols\r\n"
-                    + "Connection: Upgrade\r\n"
-                    + "Upgrade: websocket\r\n"
-                    + "Sec-WebSocket-Accept: "
-                    + Base64.getEncoder().encodeToString(MessageDigest.getInstance("SHA-1").digest((httpRequest.headers.get("Sec-WebSocket-Key").first() + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11").toByteArray()))
-                    + "\r\n\r\n")
-
-            ctx.write(Unpooled.copiedBuffer(response, CharsetUtil.UTF_8))
+        if (httpResponse.headers.get("Connection").contains("Upgrade") && httpResponse.headers.get("Upgrade").contains("websocket")) {
+            if (httpResponse.headers.get("Sec-WebSocket-Accept").first() == Base64.getEncoder().encodeToString(MessageDigest.getInstance("SHA-1").digest((Base64.getEncoder().encodeToString("CMPT471".toByteArray()) + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11").toByteArray()))) {
+                isConnected = true
+            }
         }
     }
 
-    private fun getResponseFrame(msg: String): ByteBuf {
+    private fun getRequestFrame(msg: String): ByteBuf {
         val firstByte: Byte = Integer.valueOf(129).toByte()
 
-        var secondByte: Byte = Integer.valueOf(msg.length).toByte()
+        var secondByte: Byte = Integer.valueOf(msg.length + 128).toByte()
 
         var lengthBytes = byteArrayOf()
 
@@ -115,9 +107,16 @@ class WebSocketServerHandler : ChannelInboundHandlerAdapter() {
 
         }
 
+        val maskingBytes = byteArrayOf((0..255).random().toByte(), (0..255).random().toByte(), (0..255).random().toByte(), (0..255).random().toByte())
+
         val bodyBytes = msg.toByteArray(Charset.defaultCharset())
 
-        return Unpooled.copiedBuffer(byteArrayOf(firstByte, secondByte) + lengthBytes + bodyBytes)
+
+        for (bodyIndex in bodyBytes.indices) {
+            bodyBytes[bodyIndex] = bodyBytes[bodyIndex] xor maskingBytes[bodyIndex and 0x3]
+        }
+
+        return Unpooled.copiedBuffer(byteArrayOf(firstByte, secondByte) + lengthBytes + maskingBytes + bodyBytes)
     }
 
 
@@ -147,11 +146,8 @@ class WebSocketServerHandler : ChannelInboundHandlerAdapter() {
             }
         }
 
-        currentFrameKey = shortArrayOf(inBuffer.getUnsignedByte(2 + shift), inBuffer.getUnsignedByte(3 + shift), inBuffer.getUnsignedByte(4 + shift), inBuffer.getUnsignedByte(5 + shift))
-        currentFrameKeyIndex = 0
-
         remainingFrameSize = dataSize
 
-        inBuffer.readBytes(6 + shift)
+        inBuffer.readBytes(4 + shift)
     }
 }

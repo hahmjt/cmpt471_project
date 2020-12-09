@@ -20,7 +20,7 @@ class BroadcastComponent {
         socket = DatagramSocket(15000)
 
         running = true
-        while (running) {
+        while (running) {  //Listen on UDP broadcast
             var packet = DatagramPacket(buf, buf.size)
             socket!!.receive(packet)
 

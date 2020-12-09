@@ -77,6 +77,7 @@ class WebSocketClientHandler : ChannelInboundHandlerAdapter() {
         val rawHttp = RawHttp()
         val httpResponse = rawHttp.parseResponse(received)
 
+        //WebSocket's secret algorithm to confirm connection
         if (httpResponse.headers.get("Connection").first().toLowerCase() == "upgrade" && httpResponse.headers.get("Upgrade").contains("websocket")) {
             if (httpResponse.headers.get("Sec-WebSocket-Accept").first() == Base64.getEncoder().encodeToString(MessageDigest.getInstance("SHA-1").digest((Base64.getEncoder().encodeToString("CMPT471".toByteArray()) + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11").toByteArray()))) {
                 isConnected = true
@@ -91,6 +92,7 @@ class WebSocketClientHandler : ChannelInboundHandlerAdapter() {
 
         var lengthBytes = byteArrayOf()
 
+        //Support for variable length size
         if (msg.length > 65535) {
             secondByte = Integer.valueOf(127).toByte()
 
@@ -108,11 +110,12 @@ class WebSocketClientHandler : ChannelInboundHandlerAdapter() {
 
         }
 
+        //Masking data requires random key of size 4
         val maskingBytes = byteArrayOf((0..255).random().toByte(), (0..255).random().toByte(), (0..255).random().toByte(), (0..255).random().toByte())
 
         val bodyBytes = msg.toByteArray(Charset.defaultCharset())
 
-
+        //Masking will be done via xor operation with designated key
         for (bodyIndex in bodyBytes.indices) {
             bodyBytes[bodyIndex] = bodyBytes[bodyIndex] xor maskingBytes[bodyIndex and 0x3]
         }
@@ -125,6 +128,7 @@ class WebSocketClientHandler : ChannelInboundHandlerAdapter() {
         var dataSize = inBuffer.getUnsignedByte(1).toInt() - 128
         var shift: Int
 
+        //WebSocket has variable length size
         when (dataSize) {
             126 -> {
                 dataSize = (inBuffer.getUnsignedByte(2).toInt() shl 1) + inBuffer.getUnsignedByte(3).toInt()

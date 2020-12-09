@@ -35,7 +35,7 @@ class WebSocketServerHandler : ChannelInboundHandlerAdapter() {
             processHeader(inBuffer)
         }
 
-
+        //This will read the TCP buffer until designated length and process a new frame
         while (inBuffer.isReadable) {
             val decoded = inBuffer.readByte() xor currentFrameKey[currentFrameKeyIndex and 0x3].toByte()
             print(decoded.toChar())
@@ -98,6 +98,7 @@ class WebSocketServerHandler : ChannelInboundHandlerAdapter() {
 
         var lengthBytes = byteArrayOf()
 
+        //Support for variable length size
         if (msg.length > 65535) {
             secondByte = Integer.valueOf(127).toByte()
 
@@ -125,6 +126,8 @@ class WebSocketServerHandler : ChannelInboundHandlerAdapter() {
         var dataSize = inBuffer.getUnsignedByte(1).toInt() - 128
         var shift: Int
 
+        //Support for variable length size, if second byte - 128 = 126 then is uses next 2 bytes if it's 127 it uses next 8 bytes as size field
+        //data field needs to be shifted accordingly
         when (dataSize) {
             126 -> {
                 dataSize = (inBuffer.getUnsignedByte(2).toInt() shl 1) + inBuffer.getUnsignedByte(3).toInt()

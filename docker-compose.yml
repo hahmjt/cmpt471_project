@@ -3,4 +3,8 @@ version: '3.8'
 services:
   websocket-server1:
     image: centos:7
-    command: bash -c 'yum install -y git java-1.8.0-openjdk && git clone https://github.com/hahmjt/cmpt471_project.git ~/project && ls ~/project/'
+    command: bash -c 'yum install -y git java-1.8.0-openjdk java-1.8.0-openjdk-devel && git clone https://github.com/hahmjt/cmpt471_project.git ~/project && export JAVA_HOME=/usr/lib/jvm/java && ~/project/gradlew :server:bootRun'
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
